@@ -107,42 +107,28 @@ image_rules:
 # Moderation
 moderation:
   enabled: true
-  api:
-    provider: "azure"  # Can be 'azure', 'perspective', or 'local'
-    key: ""  # Add your Azure Content Moderator API key here
-    endpoint: ""  # Add your Azure endpoint here
   settings:
+    auto_moderation:
+      delete_threshold: 0.7
+      max_violations: 3
+      timeout_duration: 300  # 5 minutes
     severity_levels:
-      low: 0.3    # Mild language
-      medium: 0.6 # Offensive language
-      high: 0.8   # Severe violations
+      low: 0.3    # Mild profanity
+      medium: 0.6  # Regular profanity
+      high: 0.8    # Hate speech or severe profanity
     actions:
       low:
-        action: "warn"
-        message: "Please keep the conversation friendly!"
+        message: "Please watch your language. This is a friendly warning."
+        duration: 0
       medium:
-        action: "delete"
-        message: "Your message was removed due to inappropriate content."
+        message: "Your message was removed due to inappropriate content. Please keep it clean."
+        duration: 0
       high:
-        action: "timeout"
-        duration: 300  # 5 minutes
-        message: "You have been timed out for 5 minutes due to severe violation."
-    auto_moderation:
-      enabled: true
-      delete_threshold: 0.8
-      timeout_threshold: 0.9
-      max_violations: 3
-      timeout_duration: 300
-    filters:
-      profanity: true
-      hate_speech: true
-      sexual_content: true
-      violence: true
+        message: "Your message was removed and you have been timed out due to severe content violation."
+        duration: 300
   swear_words:
-    - 2 girls 1 cup
-  warning: Vänligen avstå från att använda stötande språk.
-  action: warn  # Can be: warn, delete, timeout
-  timeout_duration: 300  # seconds, if action is timeout
+    - "your_custom_word_1"
+    - "your_custom_word_2"
 
 # Learning system
 learning:

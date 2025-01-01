@@ -1,7 +1,9 @@
-import requests
-import time
+import re
 from typing import Dict, Tuple, Optional
 from dataclasses import dataclass
+import json
+import os
+import yaml
 
 @dataclass
 class ModerationResult:
@@ -13,23 +15,71 @@ class ModerationResult:
 
 class ContentModerator:
     def __init__(self, config: dict):
+        self.config_path = 'config.yaml'  # Store config path for reloading
+        self.update_config(config)
+        print("Local content moderator initialized")
+    
+    def update_config(self, config: dict):
+        """Update moderator with new config"""
         self.config = config
         self.moderation_config = config.get('moderation', {})
-        self.api_config = self.moderation_config.get('api', {})
         self.settings = self.moderation_config.get('settings', {})
         
         # Initialize violation tracking
         self.user_violations = {}
         
+        self.load_word_lists()
+        print("Moderator config updated")
+    
+    def reload_config(self):
+        """Reload config from file"""
+        try:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+                self.update_config(config)
+                return True
+        except Exception as e:
+            print(f"Error reloading config: {e}")
+            return False
+    
+    def load_word_lists(self):
+        """Load word lists from files or create default ones"""
+        self.word_lists = {
+            'profanity': set([
+                'fuck', 'shit', 'ass', 'bitch', 'dick', 'pussy', 'cock', 'cunt',
+                'bastard', 'motherfucker', 'whore', 'slut'
+            ]),
+            'hate_speech': set([
+                'nigger', 'faggot', 'retard', 'spic', 'kike', 'chink', 'wetback',
+                'nazi', 'hitler'
+            ]),
+            'mild_profanity': set([
+                'damn', 'hell', 'crap', 'piss', 'suck', 'butt', 'prick',
+                'wtf', 'stfu', 'fck', 'fuk', 'fck'
+            ])
+        }
+        
+        # Add custom words from config
+        custom_words = self.config.get('moderation', {}).get('swear_words', [])
+        self.word_lists['custom'] = set(custom_words)
+    
     def check_content(self, content: str, user_id: str) -> ModerationResult:
         if not self.moderation_config.get('enabled', False):
             return ModerationResult(0, {}, "allow", "")
             
-        # Get content analysis from Azure
+        # Check content against word lists
         severity, categories = self._analyze_content(content)
         
         # Get appropriate action based on severity
         action, message, timeout = self._get_action(severity, user_id)
+        
+        # Log the action if it's not "allow"
+        if action != "allow":
+            from web_config import log_moderation_action
+            log_moderation_action(user_id, action, severity, categories)
+        
+        # Print moderation result for debugging
+        print(f"Moderation result for message '{content}': severity={severity}, action={action}")
         
         return ModerationResult(
             severity=severity,
@@ -40,57 +90,42 @@ class ContentModerator:
         )
     
     def _analyze_content(self, content: str) -> Tuple[float, Dict[str, bool]]:
-        if not self.api_config.get('key') or not self.api_config.get('endpoint'):
-            return 0, {}
-            
-        try:
-            headers = {
-                'Ocp-Apim-Subscription-Key': self.api_config['key'],
-                'Content-Type': 'text/plain'
-            }
-            
-            # Azure Content Moderator API call
-            response = requests.post(
-                f"{self.api_config['endpoint']}/contentmoderator/moderate/v1.0/ProcessText/Screen",
-                headers=headers,
-                data=content.encode('utf-8')
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                
-                # Calculate severity based on API response
-                severity = self._calculate_severity(result)
-                
-                # Extract categories
-                categories = {
-                    'profanity': bool(result.get('Terms')),
-                    'sexual_content': result.get('Classification', {}).get('ReviewRecommended', False),
-                    'hate_speech': False,  # Azure doesn't directly detect this
-                    'violence': False      # Azure doesn't directly detect this
-                }
-                
-                return severity, categories
-                
-        except Exception as e:
-            print(f"Moderation API error: {e}")
-            
-        return 0, {}
-    
-    def _calculate_severity(self, api_result: dict) -> float:
-        severity = 0
+        content_lower = content.lower()
+        words = set(re.findall(r'\b\w+\b', content_lower))
         
-        # Check for profanity terms
-        terms = api_result.get('Terms', [])
-        if terms:
-            severity = max(severity, 0.5 + (len(terms) * 0.1))
-            
-        # Check classification scores
-        classification = api_result.get('Classification', {})
-        if classification.get('ReviewRecommended'):
-            severity = max(severity, 0.7)
-            
-        return min(severity, 1.0)
+        # Initialize categories
+        categories = {
+            'profanity': False,
+            'hate_speech': False,
+            'mild_profanity': False,
+            'custom': False
+        }
+        
+        # Check each category
+        severity = 0
+        for category, word_list in self.word_lists.items():
+            matches = words.intersection(word_list)
+            if matches:
+                categories[category] = True
+                # Calculate severity based on category and number of matches
+                if category == 'hate_speech':
+                    severity = max(severity, 0.9)  # Highest severity
+                elif category == 'profanity':
+                    severity = max(severity, 0.7 + (len(matches) * 0.1))
+                elif category == 'mild_profanity':
+                    severity = max(severity, 0.3 + (len(matches) * 0.1))
+                elif category == 'custom':
+                    severity = max(severity, 0.5 + (len(matches) * 0.1))
+        
+        # Check for letter repetition (e.g., "fuuuuck")
+        for category, word_list in self.word_lists.items():
+            for word in word_list:
+                pattern = ''.join([f'{c}+' for c in word])
+                if re.search(pattern, content_lower):
+                    categories[category] = True
+                    severity = max(severity, 0.7)
+        
+        return min(severity, 1.0), categories
     
     def _get_action(self, severity: float, user_id: str) -> Tuple[str, str, Optional[int]]:
         auto_mod = self.settings.get('auto_moderation', {})
@@ -98,8 +133,9 @@ class ContentModerator:
         actions = self.settings.get('actions', {})
         
         # Update user violations
-        if severity >= auto_mod.get('delete_threshold', 0.8):
+        if severity >= auto_mod.get('delete_threshold', 0.7):
             self.user_violations[user_id] = self.user_violations.get(user_id, 0) + 1
+            print(f"User {user_id} violations: {self.user_violations[user_id]}")
             
         # Check for timeout based on repeated violations
         if self.user_violations.get(user_id, 0) >= auto_mod.get('max_violations', 3):
@@ -108,7 +144,7 @@ class ContentModerator:
             
         # Determine action based on severity
         if severity >= severity_levels.get('high', 0.8):
-            return "delete", actions['high']['message'], actions['high']['duration']
+            return "delete", actions['high']['message'], actions['high'].get('duration')
         elif severity >= severity_levels.get('medium', 0.6):
             return "delete", actions['medium']['message'], None
         elif severity >= severity_levels.get('low', 0.3):

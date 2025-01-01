@@ -84,6 +84,14 @@
                 <a href="{{ url_for('stats') }}" class="btn {% if request.endpoint == 'stats' %}btn-primary{% else %}btn-secondary{% endif %}">
                     <i class="fas fa-chart-bar"></i> Statistics
                 </a>
+                {% if session.get('username') and (users or {}).get(session.get('username'), {}).get('role') == 'admin' %}
+                <a href="{{ url_for('users') }}" class="btn {% if request.endpoint == 'users' %}btn-primary{% else %}btn-secondary{% endif %}">
+                    <i class="fas fa-users"></i> Users
+                </a>
+                <a href="{{ url_for('moderation_dashboard') }}" class="btn {% if request.endpoint == 'moderation_dashboard' %}btn-primary{% else %}btn-secondary{% endif %}">
+                    <i class="fas fa-shield-alt"></i> Moderation
+                </a>
+                {% endif %}
                 <a href="{{ url_for('logout') }}" class="btn btn-danger">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>

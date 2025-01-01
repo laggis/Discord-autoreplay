@@ -128,6 +128,18 @@ class DiscordBot(commands.Bot):
             self.config = {}
         
         self.moderator = ContentModerator(self.config)
+        print("Content moderator initialized")
+        
+    async def reload_config(self):
+        """Reload bot configuration"""
+        try:
+            with open('config.yaml', 'r', encoding='utf-8') as f:
+                self.config = yaml.safe_load(f)
+            self.moderator.reload_config()
+            return True
+        except Exception as e:
+            print(f"Error reloading config: {e}")
+            return False
 
     async def on_ready(self):
         print(f"Logged in as {self.user}!")
@@ -146,32 +158,55 @@ class DiscordBot(commands.Bot):
     async def on_message(self, message):
         if message.author == self.user:
             return
-            
+
         # Check message content with moderator
         result = self.moderator.check_content(message.content, str(message.author.id))
         
         # Handle moderation actions
         if result.action == "timeout":
-            await message.author.timeout(
-                duration=datetime.timedelta(seconds=result.timeout_duration),
-                reason="Automated moderation action"
-            )
-            await message.channel.send(f"<@{message.author.id}> {result.message}")
-            await message.delete()
-            return
+            try:
+                await message.author.timeout(
+                    duration=datetime.timedelta(seconds=result.timeout_duration),
+                    reason="Automated moderation action"
+                )
+                await message.channel.send(
+                    embed=discord.Embed(
+                        title="🚫 Moderation Action",
+                        description=f"{message.author.mention} {result.message}",
+                        color=discord.Color.red()
+                    )
+                )
+                await message.delete()
+                return
+            except discord.Forbidden:
+                print("Bot doesn't have permission to timeout users")
             
         elif result.action == "delete":
-            await message.delete()
-            await message.channel.send(f"<@{message.author.id}> {result.message}")
-            return
+            try:
+                await message.delete()
+                await message.channel.send(
+                    embed=discord.Embed(
+                        title="⚠️ Content Warning",
+                        description=f"{message.author.mention} {result.message}",
+                        color=discord.Color.orange()
+                    )
+                )
+                return
+            except discord.Forbidden:
+                print("Bot doesn't have permission to delete messages")
             
         elif result.action == "warn":
-            await message.channel.send(f"<@{message.author.id}> {result.message}")
-            
-        # Continue with normal message processing
-        # Process commands first
-        await self.process_commands(message)
+            await message.channel.send(
+                embed=discord.Embed(
+                    title="⚠️ Warning",
+                    description=f"{message.author.mention} {result.message}",
+                    color=discord.Color.yellow()
+                )
+            )
 
+        # Continue with normal message processing if no moderation action was taken
+        await self.process_commands(message)
+        
         content = message.content.lower().strip()
 
         # Check if this is an answer to a learning question
@@ -664,4 +699,4 @@ async def timeout(ctx, member: discord.Member, minutes: int, *, reason=None):
         await ctx.send("I don't have permission to timeout members!")
 
 bot = DiscordBot()
-bot.run("")
+bot.run("Yourdiscordtokenhere")

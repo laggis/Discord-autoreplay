@@ -4,6 +4,8 @@ import os
 from functools import wraps
 from datetime import datetime, timedelta
 import re
+import hashlib
+import secrets
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # For session encryption
@@ -11,7 +13,17 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # For "remember me
 
 # Admin credentials - Change these to secure values
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "admin"
+ADMIN_PASSWORD = "Kossa123"
+
+def hash_password(password, salt=None):
+    if salt is None:
+        salt = secrets.token_hex(16)
+    hash_obj = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
+    return f"{salt}${hash_obj.hex()}"
+
+def verify_password(stored_password, provided_password):
+    salt = stored_password.split('$')[0]
+    return stored_password == hash_password(provided_password, salt)
 
 def load_config():
     with open("config.yaml", "r", encoding="utf-8") as f:
@@ -20,6 +32,17 @@ def load_config():
 def save_config(config):
     with open("config.yaml", "w", encoding="utf-8") as f:
         yaml.dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+def load_users():
+    try:
+        with open('users.yaml', 'r') as f:
+            return yaml.safe_load(f) or {'users': {}}
+    except FileNotFoundError:
+        return {'users': {}}
+
+def save_users(users_data):
+    with open('users.yaml', 'w') as f:
+        yaml.dump(users_data, f)
 
 def requires_auth(f):
     @wraps(f)
@@ -37,6 +60,18 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if not session.get('logged_in'):
             return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        users_data = load_users()
+        if users_data['users'].get(session.get('username', ''), {}).get('role') != 'admin':
+            flash('Admin access required', 'danger')
+            return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -104,6 +139,13 @@ def simulate_bot_response(message):
             return data.get('answer', '')
     
     return "Jag förstår inte frågan. Kan du omformulera den?"
+
+@app.context_processor
+def inject_user_data():
+    users_data = load_users()
+    return {
+        'users': users_data['users']
+    }
 
 @app.route('/')
 @login_required
@@ -307,16 +349,104 @@ def login():
         password = request.form.get('password')
         remember = 'remember' in request.form
         
-        # Check credentials (replace with your actual authentication logic)
-        if username == "admin" and password == "admin":
+        users_data = load_users()
+        user = users_data['users'].get(username)
+        
+        if user and verify_password(user['password'], password):
             session['logged_in'] = True
+            session['username'] = username
             if remember:
-                session.permanent = True  # Uses permanent_session_lifetime from app config
+                session.permanent = True
             return redirect(url_for('index'))
         else:
             flash('Invalid username or password')
     
     return render_template('login.html')
+
+@app.route('/users')
+@admin_required
+def users():
+    users_data = load_users()
+    return render_template('users.html', 
+                         users=users_data['users'],
+                         current_user=session.get('username'))
+
+@app.route('/add_user', methods=['POST'])
+@admin_required
+def add_user():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    role = request.form.get('role')
+    
+    users_data = load_users()
+    
+    if username in users_data['users']:
+        flash('Username already exists', 'danger')
+    else:
+        users_data['users'][username] = {
+            'password': hash_password(password),
+            'role': role,
+            'created_at': '2025-01-01T09:26:12+01:00'  # Using the provided time
+        }
+        save_users(users_data)
+        flash('User added successfully', 'success')
+    
+    return redirect(url_for('users'))
+
+@app.route('/delete_user', methods=['POST'])
+@admin_required
+def delete_user():
+    username = request.form.get('username')
+    users_data = load_users()
+    
+    if username == session.get('username'):
+        flash('Cannot delete your own account', 'danger')
+    elif username in users_data['users']:
+        del users_data['users'][username]
+        save_users(users_data)
+        flash('User deleted successfully', 'success')
+    
+    return redirect(url_for('users'))
+
+@app.route('/change_user_password', methods=['POST'])
+@admin_required
+def change_user_password():
+    username = request.form.get('username')
+    new_password = request.form.get('new_password')
+    
+    users_data = load_users()
+    if username in users_data['users']:
+        users_data['users'][username]['password'] = hash_password(new_password)
+        save_users(users_data)
+        flash('Password changed successfully', 'success')
+    else:
+        flash('User not found', 'danger')
+    
+    return redirect(url_for('users'))
+
+@app.route('/change_own_password', methods=['POST'])
+@login_required
+def change_own_password():
+    current_password = request.form.get('current_password')
+    new_password = request.form.get('new_password')
+    confirm_password = request.form.get('confirm_password')
+    
+    if new_password != confirm_password:
+        flash('New passwords do not match', 'danger')
+        return redirect(url_for('users'))
+    
+    users_data = load_users()
+    username = session.get('username')
+    user = users_data['users'].get(username)
+    
+    if user and verify_password(user['password'], current_password):
+        users_data['users'][username]['password'] = hash_password(new_password)
+        save_users(users_data)
+        flash('Your password has been changed successfully', 'success')
+    else:
+        flash('Current password is incorrect', 'danger')
+    
+    return redirect(url_for('users'))
 
 @app.route('/logout')
 @login_required
@@ -324,5 +454,137 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+def init_admin_user():
+    users_data = load_users()
+    if not users_data.get('users'):
+        users_data['users'] = {}
+    
+    if 'admin' not in users_data['users']:
+        users_data['users']['admin'] = {
+            'password': hash_password('admin'),
+            'role': 'admin',
+            'created_at': '2025-01-01T09:31:25+01:00'
+        }
+        save_users(users_data)
+        print("Admin user initialized successfully")
+
+# Moderation stats storage
+moderation_stats = {
+    'warnings': 0,
+    'deletions': 0,
+    'timeouts': 0,
+    'active_violations': 0
+}
+
+recent_actions = []
+
+@app.route('/moderation')
+@login_required
+@admin_required
+def moderation_dashboard():
+    # Load current settings and word lists from the moderator
+    moderator = None  # bot.moderator if bot else None
+    if not moderator:
+        flash('Bot is not initialized', 'error')
+        return redirect(url_for('index'))
+        
+    return render_template('moderation.html',
+        stats=moderation_stats,
+        settings={},
+        word_lists={},
+        recent_actions=recent_actions
+    )
+
+@app.route('/moderation/word_list/<category>', methods=['POST'])
+@login_required
+@admin_required
+def update_word_list(category):
+    moderator = bot.moderator if bot else None
+    if not moderator:
+        flash('Bot is not initialized', 'error')
+        return redirect(url_for('moderation_dashboard'))
+        
+    words = request.form.get('words', '').split('\n')
+    words = [w.strip() for w in words if w.strip()]
+    
+    # Update word list in moderator
+    moderator.word_lists[category] = set(words)
+    
+    # If updating custom words, also update config
+    if category == 'custom':
+        config = load_config()
+        config['moderation']['swear_words'] = words
+        save_config(config)
+        # Reload config to apply changes
+        moderator.reload_config()
+    
+    flash(f'{category.title()} word list updated successfully', 'success')
+    return redirect(url_for('moderation_dashboard'))
+
+@app.route('/moderation/settings', methods=['POST'])
+@login_required
+@admin_required
+def update_moderation_settings():
+    moderator = bot.moderator if bot else None
+    if not moderator:
+        flash('Bot is not initialized', 'error')
+        return redirect(url_for('moderation_dashboard'))
+        
+    # Update severity levels
+    new_settings = {
+        'severity_levels': {
+            'low': float(request.form.get('low_threshold', 0.3)),
+            'medium': float(request.form.get('medium_threshold', 0.6)),
+            'high': float(request.form.get('high_threshold', 0.8))
+        },
+        'auto_moderation': {
+            'max_violations': int(request.form.get('max_violations', 3)),
+            'timeout_duration': int(request.form.get('timeout_duration', 300)),
+            'delete_threshold': float(request.form.get('delete_threshold', 0.7))
+        }
+    }
+    
+    # Save to config file
+    config = load_config()
+    config['moderation']['settings'].update(new_settings)
+    save_config(config)
+    
+    # Reload config to apply changes immediately
+    moderator.reload_config()
+    
+    flash('Moderation settings updated successfully', 'success')
+    return redirect(url_for('moderation_dashboard'))
+
+def update_moderation_stats(action):
+    """Update moderation statistics"""
+    if action == 'warn':
+        moderation_stats['warnings'] += 1
+    elif action == 'delete':
+        moderation_stats['deletions'] += 1
+    elif action == 'timeout':
+        moderation_stats['timeouts'] += 1
+        
+    # Update active violations count
+    # if bot and bot.moderator:
+    #     moderation_stats['active_violations'] = len(bot.moderator.user_violations)
+
+def log_moderation_action(user, action, severity, categories):
+    """Log a moderation action"""
+    recent_actions.insert(0, {
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'user': user,
+        'action': action,
+        'severity': severity,
+        'categories': [cat for cat, triggered in categories.items() if triggered]
+    })
+    
+    # Keep only last 100 actions
+    if len(recent_actions) > 100:
+        recent_actions.pop()
+    
+    # Update stats
+    update_moderation_stats(action)
+
 if __name__ == '__main__':
+    init_admin_user()  # Initialize admin user if not exists
     app.run(host='0.0.0.0', port=5006, debug=True)
