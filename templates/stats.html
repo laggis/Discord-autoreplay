@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Bot Statistics{% endblock %}
+
+{% block header_subtitle %}View your bot's performance and usage statistics{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        background: #4f46e5;
+        color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .stats-card h3 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+    }
+    .stats-card p {
+        margin: 0;
+        opacity: 0.8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Overview Stats -->
+<div class="section">
+    <h2 class="mb-4"><i class="fas fa-chart-line"></i> Overview</h2>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="stats-card">
+                <p>Total Messages</p>
+                <h3>{{ stats.total_messages }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card">
+                <p>Images Analyzed</p>
+                <h3>{{ stats.total_images }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card">
+                <p>Total Responses</p>
+                <h3>{{ stats.total_responses }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Response Usage -->
+<div class="section">
+    <h2 class="mb-4"><i class="fas fa-comments"></i> Response Usage</h2>
+    <div class="row">
+        <div class="col-md-6">
+            <h4>Keywords</h4>
+            <canvas id="keywordsChart"></canvas>
+            <div class="table-responsive mt-3">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Keyword</th>
+                            <th>Uses</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for keyword, uses in stats.keywords.items() %}
+                        <tr>
+                            <td>{{ keyword }}</td>
+                            <td>{{ uses }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <h4>Image Rules</h4>
+            <canvas id="imageRulesChart"></canvas>
+            <div class="table-responsive mt-3">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Rule</th>
+                            <th>Uses</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rule, uses in stats.image_rules.items() %}
+                        <tr>
+                            <td>{{ rule }}</td>
+                            <td>{{ uses }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Learned Responses -->
+<div class="section">
+    <h2 class="mb-4"><i class="fas fa-brain"></i> Learned Responses</h2>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Question</th>
+                    <th>Uses</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for question, uses in stats.learned_responses.items() %}
+                <tr>
+                    <td>{{ question }}</td>
+                    <td>{{ uses }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Unanswered Questions -->
+<div class="section">
+    <h2 class="mb-4"><i class="fas fa-question-circle"></i> Recent Unanswered Questions</h2>
+    <div class="list-group">
+        {% for question in stats.unanswered_questions %}
+        <div class="list-group-item">{{ question }}</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Keywords Chart
+    const keywordsCtx = document.getElementById('keywordsChart').getContext('2d');
+    new Chart(keywordsCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ stats.keywords.keys()|list|tojson }},
+            datasets: [{
+                label: 'Uses',
+                data: {{ stats.keywords.values()|list|tojson }},
+                backgroundColor: '#4f46e5'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Image Rules Chart
+    const imageRulesCtx = document.getElementById('imageRulesChart').getContext('2d');
+    new Chart(imageRulesCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ stats.image_rules.keys()|list|tojson }},
+            datasets: [{
+                label: 'Uses',
+                data: {{ stats.image_rules.values()|list|tojson }},
+                backgroundColor: '#10b981'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

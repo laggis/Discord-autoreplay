@@ -1,0 +1,161 @@
+# Bot Configuration File
+
+# Bot Settings
+settings:
+  language: sv  # sv for Swedish, en for English
+  cooldown: 5  # Global cooldown in seconds
+  learning_enabled: true
+  max_response_length: 2000
+
+# Keyword-based responses
+keywords:
+  Hej:
+    tags: [greeting, welcome]
+    response: Hej. hur kan jag hjälpa dig idag??
+    cooldown: 5
+    uses: 0
+    last_used: null
+
+  Vad heter valize grundens karaktärssysterm?:
+    tags: [character, system, valize]
+    response: Hej, den heter klarserver_character
+    cooldown: 10
+    uses: 0
+    last_used: null
+
+  Duktig pingvin gå ät lite fisk:
+    tags: [pingvin, fisk]
+    response: Tack, men vi har ingen fisk längre du får köpa det ;(
+    cooldown: 5
+    uses: 0
+    last_used: null
+
+  hjälp:
+    tags: [help, support]
+    response: Visst, vad behöver du hjälp med?
+    cooldown: 5
+    uses: 0
+    last_used: null
+
+  Kan ej logga in:
+    tags: [login, panel, help]
+    response: >-
+      Hejsan kan du inte logga in på på panel? Gå till denna länken och försök få tillbaks 
+      till lösenord om det inte funkar gör ett support ticket eller kontakta LaGgIs. 
+      [Password Recovery](https://panel.penguinhosting.host/Login/PasswordRecovery)
+    cooldown: 60
+    uses: 0
+    last_used: null
+
+  Kan inte logga in:
+    tags: [login, panel, help]
+    response: >-
+      Hejsan kan du inte logga in på på panel? Gå till denna länken och försök få tillbaks 
+      till lösenord om det inte funkar gör ett support ticket eller kontakta LaGgIs. 
+      [Password Recovery](https://panel.penguinhosting.host/Login/PasswordRecovery)
+    cooldown: 60
+    uses: 0
+    last_used: null
+
+  Hejdå:
+    tags: [goodbye, exit]
+    response: Hejdå! Ha en trevlig dag!
+    cooldown: 5
+    uses: 0
+    last_used: null
+
+  Vad är Vladmir?:
+    tags: [vladimir, code]
+    response: Vad koden är 587312
+    cooldown: 30
+    uses: 0
+    last_used: null
+
+# Image analysis responses
+image_rules:
+  black_image:
+    response: Bilden är helt svart!
+    uses: 0
+    last_used: null
+
+  empty_image:
+    response: Är inte tillräckligt smart för att hitta problemet än. Jag är bara en pingvin!
+    uses: 0
+    last_used: null
+
+  Wrong username or password!:
+    response: >-
+      Hej verkar som att du inte kan logga in på txadmin, om du har glömt ditt lösenord 
+      så kan du se det i mod mananger under Txadmin password reset.
+    uses: 0
+    last_used: null
+
+  No database selected:
+    response: >-
+      Hej det verkar som att du inte har en database i din mysql string eller i mysql.cfg, 
+      Du kan gå till [MySQL Panel](https://panel.penguinhosting.host/MySql) och sen koperera 
+      ditt database namn och sen gå till mysql.cfg och lägg in database namn under ```database=``` 
+      [Youtube video](https://www.youtube.com/watch?v=2r6vY5XKlK8&t=1s)
+    uses: 0
+    last_used: null
+
+  ESX Requires a minimum Artifact version:
+    response: Det verkar som att du behöver update din Artifact version du kan göra det via mod mananger.
+    uses: 0
+    last_used: null
+
+# Moderation
+moderation:
+  enabled: true
+  api:
+    provider: "azure"  # Can be 'azure', 'perspective', or 'local'
+    key: ""  # Add your Azure Content Moderator API key here
+    endpoint: ""  # Add your Azure endpoint here
+  settings:
+    severity_levels:
+      low: 0.3    # Mild language
+      medium: 0.6 # Offensive language
+      high: 0.8   # Severe violations
+    actions:
+      low:
+        action: "warn"
+        message: "Please keep the conversation friendly!"
+      medium:
+        action: "delete"
+        message: "Your message was removed due to inappropriate content."
+      high:
+        action: "timeout"
+        duration: 300  # 5 minutes
+        message: "You have been timed out for 5 minutes due to severe violation."
+    auto_moderation:
+      enabled: true
+      delete_threshold: 0.8
+      timeout_threshold: 0.9
+      max_violations: 3
+      timeout_duration: 300
+    filters:
+      profanity: true
+      hate_speech: true
+      sexual_content: true
+      violence: true
+  swear_words:
+    - 2 girls 1 cup
+  warning: Vänligen avstå från att använda stötande språk.
+  action: warn  # Can be: warn, delete, timeout
+  timeout_duration: 300  # seconds, if action is timeout
+
+# Learning system
+learning:
+  enabled: true
+  max_responses: 1000
+  min_confidence: 0.7
+  responses: {}  # Learned responses will be stored here
+
+# Statistics
+stats:
+  total_messages: 0
+  total_images_analyzed: 0
+  total_responses: 0
+  last_reset: null
+  response_history: []  # Limited list of recent responses
+  unanswered_questions: []  # Track questions without answers
