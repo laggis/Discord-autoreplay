@@ -26,11 +26,13 @@ def verify_password(stored_password, provided_password):
     return stored_password == hash_password(provided_password, salt)
 
 def load_config():
-    with open("config.yaml", "r", encoding="utf-8") as f:
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+    with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 def save_config(config):
-    with open("config.yaml", "w", encoding="utf-8") as f:
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+    with open(config_path, "w", encoding="utf-8") as f:
         yaml.dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
 def load_users():
@@ -125,13 +127,21 @@ def simulate_bot_response(message):
     
     # Check keywords
     for keyword, data in config.get('keywords', {}).items():
-        if isinstance(data, dict):
-            response = data.get('response', '')
-        else:
-            response = data
-            
         if keyword.lower() in message.lower():
-            return response
+            if isinstance(data, dict):
+                if 'response_type' in data and data['response_type'] == 'multi':
+                    # Format multi-response message
+                    response_text = ""
+                    for resp in data['responses']:
+                        if isinstance(resp, dict):
+                            response_text += f"**{resp.get('title', '')}**\n{resp.get('content', '')}\n\n"
+                        else:
+                            response_text += f"{resp}\n\n"
+                    return response_text.strip()
+                else:
+                    return data.get('response', '')
+            else:
+                return data
     
     # Check learned responses
     for question, data in config.get('learning', {}).get('responses', {}).items():
@@ -190,22 +200,34 @@ def test_response():
 def update_keywords():
     config = load_config()
     keyword = request.form.get('keyword')
-    response = request.form.get('response')
+    responses = request.form.getlist('responses[]')  # Get all responses
     tags = request.form.get('tags', '').split(',')
     tags = [tag.strip() for tag in tags if tag.strip()]
     cooldown = int(request.form.get('cooldown', 5))
     
-    if keyword and response:
+    if keyword and responses:
         if 'keywords' not in config:
             config['keywords'] = {}
+            
+        # Create keyword entry with multi-response support
         config['keywords'][keyword] = {
-            'response': response,
             'tags': tags,
             'cooldown': cooldown,
             'uses': 0,
             'last_used': None
         }
+        
+        # Handle single vs multi response
+        if len(responses) > 1:
+            config['keywords'][keyword]['response_type'] = 'multi'
+            config['keywords'][keyword]['responses'] = responses
+        else:
+            config['keywords'][keyword]['response'] = responses[0]
+            
         save_config(config)
+        flash('Keyword updated successfully!', 'success')
+    else:
+        flash('Keyword and at least one response are required!', 'error')
     
     return redirect(url_for('index'))
 
@@ -587,4 +609,5 @@ def log_moderation_action(user, action, severity, categories):
 
 if __name__ == '__main__':
     init_admin_user()  # Initialize admin user if not exists
-    app.run(host='0.0.0.0', port=5006, debug=True)
+    # Use threaded=False to avoid threading issues
+    app.run(host='0.0.0.0', port=3001, debug=False, threaded=False)

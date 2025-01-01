@@ -1,147 +1,497 @@
-# Bot Configuration File
-
-# Bot Settings
 settings:
-  language: sv  # sv for Swedish, en for English
-  cooldown: 5  # Global cooldown in seconds
+  language: sv
+  cooldown: 5
   learning_enabled: true
   max_response_length: 2000
-
-# Keyword-based responses
 keywords:
   Hej:
-    tags: [greeting, welcome]
-    response: Hej. hur kan jag hjälpa dig idag??
+    tags:
+    - greeting
+    - welcome
+    response: Hej, hur kan jag hjälpa dig idag??
     cooldown: 5
     uses: 0
     last_used: null
-
   Vad heter valize grundens karaktärssysterm?:
-    tags: [character, system, valize]
+    tags:
+    - character
+    - system
+    - valize
     response: Hej, den heter klarserver_character
     cooldown: 10
     uses: 0
     last_used: null
-
   Duktig pingvin gå ät lite fisk:
-    tags: [pingvin, fisk]
+    tags:
+    - pingvin
+    - fisk
     response: Tack, men vi har ingen fisk längre du får köpa det ;(
     cooldown: 5
     uses: 0
     last_used: null
-
   hjälp:
-    tags: [help, support]
+    tags:
+    - help
+    - support
     response: Visst, vad behöver du hjälp med?
     cooldown: 5
     uses: 0
     last_used: null
-
   Kan ej logga in:
-    tags: [login, panel, help]
-    response: >-
-      Hejsan kan du inte logga in på på panel? Gå till denna länken och försök få tillbaks 
-      till lösenord om det inte funkar gör ett support ticket eller kontakta LaGgIs. 
-      [Password Recovery](https://panel.penguinhosting.host/Login/PasswordRecovery)
+    tags:
+    - login
+    - panel
+    - help
+    response: Hejsan kan du inte logga in på på panel? Gå till denna länken och försök
+      få tillbaks  till lösenord om det inte funkar gör ett support ticket eller kontakta
+      LaGgIs.  [Password Recovery](https://panel.penguinhosting.host/Login/PasswordRecovery)
     cooldown: 60
     uses: 0
     last_used: null
-
   Kan inte logga in:
-    tags: [login, panel, help]
-    response: >-
-      Hejsan kan du inte logga in på på panel? Gå till denna länken och försök få tillbaks 
-      till lösenord om det inte funkar gör ett support ticket eller kontakta LaGgIs. 
-      [Password Recovery](https://panel.penguinhosting.host/Login/PasswordRecovery)
+    tags:
+    - login
+    - panel
+    - help
+    response: Hejsan kan du inte logga in på på panel? Gå till denna länken och försök
+      få tillbaks  till lösenord om det inte funkar gör ett support ticket eller kontakta
+      LaGgIs.  [Password Recovery](https://panel.penguinhosting.host/Login/PasswordRecovery)
     cooldown: 60
     uses: 0
     last_used: null
-
   Hejdå:
-    tags: [goodbye, exit]
+    tags:
+    - goodbye
+    - exit
     response: Hejdå! Ha en trevlig dag!
     cooldown: 5
     uses: 0
     last_used: null
-
   Vad är Vladmir?:
-    tags: [vladimir, code]
+    tags:
+    - vladimir
+    - code
     response: Vad koden är 587312
     cooldown: 30
     uses: 0
     last_used: null
+  sitter fast i lufen:
+    tags:
+    - stuck
+    - help
+    - fivem
+    response_type: multi
+    responses:
+    - title: Error details
+      content: Sitter fast i luften
+    - title: What can you do?
+      content: Read the error details and take action.
+    - title: Lösningar
+      content: '1. Tryck F8 för att öppna konsolen och skriv /tp för att teleportera
+        dig
 
-# Image analysis responses
+        2. Prova att logga ut och in igen på servern
+
+        3. Använd kommandot /respawn i chatten
+
+        4. Om inget annat fungerar, starta om din FiveM klient
+
+        '
+    - title: Extra Information
+      content: '• Detta är ett vanligt problem som kan uppstå av olika anledningar
+
+        • Om problemet fortsätter, kontakta en administratör
+
+        • Spara gärna en skärmdump om det händer igen
+
+        '
+    cooldown: 30
+    uses: 0
+    last_used: null
+  fastnat i luften:
+    tags:
+    - stuck
+    - help
+    - fivem
+    response_type: multi
+    responses:
+    - title: Error details
+      content: Fastnat i luften
+    - title: What can you do?
+      content: Read the error details and take action.
+    - title: Lösningar
+      content: '1. Tryck F8 för att öppna konsolen och skriv /tp för att teleportera
+        dig
+
+        2. Prova att logga ut och in igen på servern
+
+        3. Använd kommandot /respawn i chatten
+
+        4. Om inget annat fungerar, starta om din FiveM klient
+
+        '
+    - title: Extra Information
+      content: '• Detta är ett vanligt problem som kan uppstå av olika anledningar
+
+        • Om problemet fortsätter, kontakta en administratör
+
+        • Spara gärna en skärmdump om det händer igen
+
+        '
+    cooldown: 30
+    uses: 0
+    last_used: null
+  kan inte röra mig:
+    tags:
+    - stuck
+    - help
+    - fivem
+    response_type: multi
+    responses:
+    - title: Error details
+      content: Kan inte röra mig
+    - title: What can you do?
+      content: Read the error details and take action.
+    - title: Lösningar
+      content: '1. Tryck F8 för att öppna konsolen och skriv /tp för att teleportera
+        dig
+
+        2. Prova att logga ut och in igen på servern
+
+        3. Använd kommandot /respawn i chatten
+
+        4. Om inget annat fungerar, starta om din FiveM klient
+
+        '
+    - title: Extra Information
+      content: '• Detta är ett vanligt problem som kan uppstå av olika anledningar
+
+        • Om problemet fortsätter, kontakta en administratör
+
+        • Spara gärna en skärmdump om det händer igen
+
+        '
+    cooldown: 30
+    uses: 0
+    last_used: null
+  svävar i luften:
+    tags:
+    - stuck
+    - help
+    - fivem
+    response_type: multi
+    responses:
+    - title: Error details
+      content: Svävar i luften
+    - title: What can you do?
+      content: Read the error details and take action.
+    - title: Lösningar
+      content: '1. Tryck F8 för att öppna konsolen och skriv /tp för att teleportera
+        dig
+
+        2. Prova att logga ut och in igen på servern
+
+        3. Använd kommandot /respawn i chatten
+
+        4. Om inget annat fungerar, starta om din FiveM klient
+
+        '
+    - title: Extra Information
+      content: '• Detta är ett vanligt problem som kan uppstå av olika anledningar
+
+        • Om problemet fortsätter, kontakta en administratör
+
+        • Spara gärna en skärmdump om det händer igen
+
+        '
+    cooldown: 30
+    uses: 0
+    last_used: null
+  No database selected:
+    tags:
+    - No database
+    cooldown: 5
+    uses: 0
+    last_used: null
+    response: Hej det verkar som att du inte har en database i din mysql string eller
+      i mysql.cfg, Du kan gå till [MySQL Panel](https://panel.penguinhosting.host/MySql)
+      och sen koperera ditt database namn och sen gå till mysql.cfg och lägg in database
+      namn under ```database=``` [Youtube video](https://www.youtube.com/watch?v=2r6vY5XKlK8&t=1s)
+stuck_messages:
+  triggers:
+  - sitter fast i lufen
+  - fastnat i luften
+  - kan inte röra mig
+  - svävar i luften
+  responses:
+    initial:
+    - 'Jag förstår att du sitter fast. Här är några saker du kan prova:'
+    - 'Det låter frustrerande. Låt mig hjälpa dig med några lösningar:'
+    - 'Jag är här för att hjälpa. Här är vad du kan göra:'
+  solutions:
+  - Tryck F8 för att öppna konsolen och skriv /tp för att teleportera dig
+  - Prova att logga ut och in igen på servern
+  - Använd kommandot /respawn i chatten
+  - Om inget annat fungerar, starta om din FiveM klient
+  additional_info:
+  - Detta är ett vanligt problem som kan uppstå av olika anledningar
+  - Om problemet fortsätter, kontakta en administratör
+  - Spara gärna en skärmdump om det händer igen
+  cooldown: 30
+fivem_errors:
+  artifact_version:
+    triggers:
+    - artifact version
+    - requires a minimum
+    - please update
+    - esx
+    title: ' FiveM Artifact Version Error'
+    description: ESX kräver en nyare version av FiveM Artifact
+    solutions:
+    - Uppdatera din FiveM Artifact version
+    - Kontrollera ESX versionskraven
+    - Säkerställ att alla dependencies är uppdaterade
+    - Starta om FiveM efter uppdateringen
+  connection:
+    triggers:
+    - couldn't connect
+    - failed to get info
+    - connection rejected
+    title: ' Anslutningsfel'
+    description: Kunde inte ansluta till servern
+    solutions:
+    - Kontrollera att servern är igång
+    - Verifiera att UDP-portarna är öppna
+    - Kontrollera din brandvägg
+    - Testa att pinga servern
+    - Kontrollera din internetanslutning
+  udp:
+    triggers:
+    - udp packets
+    - allowing udp
+    title: ' UDP Anslutningsfel'
+    description: Problem med UDP-anslutningen
+    solutions:
+    - Öppna nödvändiga UDP-portar i din router
+    - Kontrollera serverens brandväggsregler
+    - Verifiera att din ISP inte blockerar UDP-trafik
+    - Testa att tillfälligt inaktivera brandväggen
+  server_full:
+    triggers:
+    - server is full
+    - no available slots
+    title: ' Server Full'
+    description: Servern är full just nu
+    solutions:
+    - Vänta tills en plats blir ledig
+    - Försök igen senare
+    - Kontrollera server status på Discord
+  auth_error:
+    triggers:
+    - authentication failed
+    - invalid token
+    title: ' Autentiseringsfel'
+    description: Problem med inloggning till servern
+    solutions:
+    - Kontrollera dina inloggningsuppgifter
+    - Försök logga ut och in igen i FiveM
+    - Rensa din FiveM cache
+    - Kontakta server administratören
+  script_error:
+    triggers:
+    - script error
+    - failed to load
+    - missing dependency
+    title: ' Skriptfel'
+    description: Problem med server skript
+    solutions:
+    - Kontrollera att alla required scripts är installerade
+    - Uppdatera dina skript
+    - Rensa din cache mapp
+    - Starta om FiveM klienten
+  database_error:
+    triggers:
+    - "no database selected"
+    - "ZERUNDLDBYERRDR"
+    - "UnhandledPromiseRejectionWarning"
+    title: "Database Connection Error"
+    description: "Det verkar vara ett problem med databasen. Här är några möjliga lösningar:"
+    solutions:
+    - "Kontrollera att databasens namn är korrekt angiven i mysql.cfg"
+    - "Gå till [MySQL Panel](https://panel.penguinhosting.host/MySql) för att verifiera ditt databasnamn"
+    - "Lägg till ditt databasnamn i mysql.cfg under database="
+    - "Om problemet kvarstår, kontakta en administratör"
+  flask_error:
+    triggers:
+    - "TypeError: 'handle' must be a _ThreadHandle"
+    - "threading.Thread.start"
+    - "daemon=self.daemon"
+    title: "Flask Threading Error"
+    description: "Det verkar vara ett problem med Flask-applikationens trådar. Här är några möjliga lösningar:"
+    solutions:
+    - "Starta om Flask-applikationen"
+    - "Kontrollera att alla nödvändiga paket är installerade: pip install flask watchdog"
+    - "Se till att du kör Python 3.7 eller senare"
+    - "Rensa alla temporära Python-filer (.pyc)"
+    - "Om problemet kvarstår, prova att köra Flask utan debug mode: debug=False"
+responses:
+  greetings:
+    triggers:
+    - hej
+    - hallå
+    - tjena
+    - goddag
+    - god morgon
+    - god kväll
+    responses:
+    - 'Hej {username}! '
+    - 'Hallå där! Hur kan jag hjälpa dig? '
+    - Tjena! Vad kan jag göra för dig?
+    cooldown: 5
+  file_search:
+    responses:
+      success:
+        title: 'Fil Hittad! '
+        message: 'Här är filen du letar efter:
+
+          {path}'
+      not_found:
+        title: 'Fil Saknas '
+        message: Tyvärr kunde jag inte hitta det du letar efter.
+    triggers:
+    - where
+    - find
+    - var
+    - hitta
+  errors:
+    general:
+      title: ' Ett fel uppstod'
+      message: Ett oväntat fel uppstod. Försök igen senare.
+    processing:
+      title: ' Behandlingsfel'
+      message: Tyvärr kunde jag inte behandla ditt meddelande just nu.
 image_rules:
   black_image:
     response: Bilden är helt svart!
     uses: 0
     last_used: null
-
   empty_image:
-    response: Är inte tillräckligt smart för att hitta problemet än. Jag är bara en pingvin!
+    response: Är inte tillräckligt smart för att hitta problemet än. Jag är bara en
+      pingvin!
     uses: 0
     last_used: null
-
   Wrong username or password!:
-    response: >-
-      Hej verkar som att du inte kan logga in på txadmin, om du har glömt ditt lösenord 
-      så kan du se det i mod mananger under Txadmin password reset.
+    response: Hej verkar som att du inte kan logga in på txadmin, om du har glömt
+      ditt lösenord  så kan du se det i mod mananger under Txadmin password reset.
     uses: 0
     last_used: null
-
-  No database selected:
-    response: >-
-      Hej det verkar som att du inte har en database i din mysql string eller i mysql.cfg, 
-      Du kan gå till [MySQL Panel](https://panel.penguinhosting.host/MySql) och sen koperera 
-      ditt database namn och sen gå till mysql.cfg och lägg in database namn under ```database=``` 
-      [Youtube video](https://www.youtube.com/watch?v=2r6vY5XKlK8&t=1s)
-    uses: 0
-    last_used: null
-
   ESX Requires a minimum Artifact version:
-    response: Det verkar som att du behöver update din Artifact version du kan göra det via mod mananger.
+    response: Det verkar som att du behöver update din Artifact version du kan göra
+      det via mod mananger.
     uses: 0
     last_used: null
-
-# Moderation
 moderation:
   enabled: true
   settings:
     auto_moderation:
       delete_threshold: 0.7
       max_violations: 3
-      timeout_duration: 300  # 5 minutes
+      timeout_duration: 300
     severity_levels:
-      low: 0.3    # Mild profanity
-      medium: 0.6  # Regular profanity
-      high: 0.8    # Hate speech or severe profanity
+      low: 0.3
+      medium: 0.6
+      high: 0.8
     actions:
       low:
-        message: "Please watch your language. This is a friendly warning."
+        message: Please watch your language. This is a friendly warning.
         duration: 0
       medium:
-        message: "Your message was removed due to inappropriate content. Please keep it clean."
+        message: Your message was removed due to inappropriate content. Please keep
+          it clean.
         duration: 0
       high:
-        message: "Your message was removed and you have been timed out due to severe content violation."
+        message: Your message was removed and you have been timed out due to severe
+          content violation.
         duration: 300
   swear_words:
-    - "your_custom_word_1"
-    - "your_custom_word_2"
-
-# Learning system
+  - your_custom_word_1
+  - your_custom_word_2
 learning:
   enabled: true
   max_responses: 1000
   min_confidence: 0.7
-  responses: {}  # Learned responses will be stored here
-
-# Statistics
+  responses: {}
 stats:
   total_messages: 0
   total_images_analyzed: 0
   total_responses: 0
   last_reset: null
-  response_history: []  # Limited list of recent responses
-  unanswered_questions: []  # Track questions without answers
+  response_history: []
+  unanswered_questions: []
+discord:
+  token: YOUR_BOT_TOKEN
+  prefix: '!'
+web:
+  secret_key: your-secret-key-here
+  port: 5006
+  host: 0.0.0.0
+  session_duration: 3600
+users:
+  default_admin:
+    username: admin
+    password: admin
+    role: admin
+learning_system:
+  enabled: true
+  max_questions: 100
+  min_confidence: 0.7
+  response_timeout: 300
+moderation_system:
+  enabled: true
+  settings:
+    auto_moderation:
+      delete_threshold: 0.7
+      max_violations: 3
+      timeout_duration: 300
+    severity_levels:
+      low: 0.3
+      medium: 0.6
+      high: 0.8
+    actions:
+      low:
+        message: Please watch your language. This is a friendly warning.
+        duration: 0
+      medium:
+        message: Your message was removed due to inappropriate content. Please keep
+          it clean.
+        duration: 0
+      high:
+        message: Your message was removed and you have been timed out due to severe
+          content violation.
+        duration: 300
+  swear_words:
+  - fuck
+  - shit
+  - damn
+image_processing:
+  enabled: true
+  temp_dir: temp
+  supported_formats:
+  - .png
+  - .jpg
+  - .jpeg
+  - .gif
+  ocr:
+    enabled: true
+    language: eng
+response_templates:
+  stuck:
+  - Jag förstår att du sitter fast. Kan du beskriva problemet mer specifikt?
+  - Det låter frustrerande. Vad har du försökt hittills?
+  - Jag är här för att hjälpa. Vad är det du försöker göra?
+  error:
+  - Tyvärr kunde jag inte hjälpa dig just nu. Försök igen senare.
+  - Ett fel uppstod. Kan du försöka omformulera din fråga?
+  greeting:
+  - Hej! Hur kan jag hjälpa dig?
+  - Välkommen! Vad kan jag göra för dig?
