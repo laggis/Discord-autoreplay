@@ -13,7 +13,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # For "remember me
 
 # Admin credentials - Change these to secure values
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "Kossa123"
+ADMIN_PASSWORD = "admin"
 
 def hash_password(password, salt=None):
     if salt is None:
