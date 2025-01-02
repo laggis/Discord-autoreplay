@@ -114,269 +114,244 @@ image_processing:
 image_rules:
   ESX Requires a minimum Artifact version:
     last_used: null
-    response: >-
-      Det verkar som att du behöver update din Artifact version du kan göra
+    response: Det verkar som att du behöver update din Artifact version du kan göra
       det via mod mananger.
     uses: 0
   Wrong username or password!:
     last_used: null
-    response: >-
-      Hej verkar som att du inte kan logga in på txadmin, om du har glömt
+    response: Hej verkar som att du inte kan logga in på txadmin, om du har glömt
       ditt lösenord  så kan du se det i mod mananger under Txadmin password reset.
     uses: 0
   black_image:
     last_used: null
-    response: >-
-      Bilden är helt svart!
+    response: Bilden är helt svart!
     uses: 0
   empty_image:
     last_used: null
-    response: >-
-      Är inte tillräckligt smart för att hitta problemet än. Jag är bara en
+    response: Är inte tillräckligt smart för att hitta problemet än. Jag är bara en
       pingvin!
     uses: 0
 keywords:
-  'Duktig pingvin gå ät lite fisk':
+  Duktig pingvin gå ät lite fisk:
     cooldown: 5
     last_used: null
-    response: >-
-      Tack, men vi har ingen fisk längre du får köpa det ;(
+    response: Tack, men vi har ingen fisk längre du får köpa det ;(
     tags:
-      - pingvin
-      - fisk
+    - pingvin
+    - fisk
     uses: 0
-  'Hej':
+  Hej:
     cooldown: 5
     last_used: null
-    response: >-
-      Hej, hur kan jag hjälpa dig idag??
+    response: Hej, hur kan jag hjälpa dig idag??
     tags:
-      - greeting
-      - welcome
+    - greeting
+    - welcome
     uses: 0
-  'Hejdå':
+  Hejdå:
     cooldown: 5
     last_used: null
-    response: >-
-      Hejdå! Ha en trevlig dag!
+    response: Hejdå! Ha en trevlig dag!
     tags:
-      - goodbye
-      - exit
+    - goodbye
+    - exit
     uses: 0
-  'Kan du hjälpa mig att logga in på ftp?':
-    cooldown: 30
-    last_used: null
-    response: >-
-      För att logga in på FTP behöver du dina FTP-uppgifter från panelen.
-      Gå till din server i panelen och klicka på "Hantera" -> "Inställningar" för
-      att hitta dina FTP-uppgifter. Om du har problem med inloggningen, kontakta support.
-    tags:
-      - ftp
-      - login
-      - help
-    uses: 0
-  'Kan ej logga in':
+  Kan ej logga in:
     cooldown: 60
     last_used: null
-    response: >-
-      Hejsan kan du inte logga in på på panel? Gå till denna länken och försök
+    response: Hejsan kan du inte logga in på på panel? Gå till denna länken och försök
       få tillbaks  till lösenord om det inte funkar gör ett support ticket eller kontakta
       LaGgIs.  [Password Recovery](https://panel.penguinhosting.host/Login/PasswordRecovery)
     tags:
-      - login
-      - panel
-      - help
+    - login
+    - panel
+    - help
     uses: 0
-  'Kan inte logga in':
+  Kan inte logga in:
     cooldown: 60
     last_used: null
-    response: >-
-      Hejsan kan du inte logga in på på panel? Gå till denna länken och försök
+    response: Hejsan kan du inte logga in på på panel? Gå till denna länken och försök
       få tillbaks  till lösenord om det inte funkar gör ett support ticket eller kontakta
       LaGgIs.  [Password Recovery](https://panel.penguinhosting.host/Login/PasswordRecovery)
     tags:
-      - login
-      - panel
-      - help
+    - login
+    - panel
+    - help
     uses: 0
-  'No database selected':
+  No database selected:
     cooldown: 5
     last_used: null
-    response: >-
-      Hej det verkar som att du inte har en database i din mysql string eller
+    response: Hej det verkar som att du inte har en database i din mysql string eller
       i mysql.cfg, Du kan gå till [MySQL Panel](https://panel.penguinhosting.host/MySql)
       och sen koperera ditt database namn och sen gå till mysql.cfg och lägg in database
       namn under ```database=``` [Youtube video](https://www.youtube.com/watch?v=2r6vY5XKlK8&t=1s)
     tags:
-      - No database
+    - No database
     uses: 0
-  'Vad heter valize grundens karaktärssysterm?':
+  Vad heter valize grundens karaktärssysterm?:
     cooldown: 10
     last_used: null
-    response: >-
-      Hej, den heter klarserver_character
+    response: Hej, den heter klarserver_character
     tags:
-      - character
-      - system
-      - valize
+    - character
+    - system
+    - valize
     uses: 0
-  'Vad är Vladmir?':
+  Vad är Vladmir?:
     cooldown: 30
     last_used: null
-    response: >-
-      Vad koden är 587312
+    response: Vad koden är 587312
     tags:
-      - vladimir
-      - code
+    - vladimir
+    - code
     uses: 0
-  'har glömt mitt lösenord till panel':
+  all:
     cooldown: 30
     last_used: null
-    response: >-
-      Hejsan! För att återställa ditt lösenord kan du gå till denna länk: [Password Recovery](https://panel.penguinhosting.host/Login/PasswordRecovery). 
-      Om du fortfarande har problem, skapa gärna ett support ticket eller kontakta LaGgIs.
+    response: Det verkar som att du använder en gammla version av grunden, tryck update
+      i mod mananger så ska det funka igen.
     tags:
-      - login
-      - password
-      - panel
-      - help
+    - learned
     uses: 0
-  'fastnat i luften':
+  fastnat i luften:
     cooldown: 30
     last_used: null
     response_type: multi
     responses:
-      - title: Error details
-        content: Fastnat i luften
-      - title: What can you do?
-        content: Read the error details and take action.
-      - title: Lösningar
-        content: >-
-          1. Tryck F8 för att öppna konsolen och skriv /tp för att teleportera dig
+    - content: Fastnat i luften
+      title: Error details
+    - content: Read the error details and take action.
+      title: What can you do?
+    - content: '1. Tryck F8 för att öppna konsolen och skriv /tp för att teleportera
+        dig
 
-          2. Prova att logga ut och in igen på servern
+        2. Prova att logga ut och in igen på servern
 
-          3. Använd kommandot /respawn i chatten
+        3. Använd kommandot /respawn i chatten
 
-          4. Om inget annat fungerar, starta om din FiveM klient
-      - title: Extra Information
-        content: >-
-          • Detta är ett vanligt problem som kan uppstå av olika anledningar
+        4. Om inget annat fungerar, starta om din FiveM klient
 
-          • Om problemet fortsätter, kontakta en administratör
+        '
+      title: Lösningar
+    - content: '• Detta är ett vanligt problem som kan uppstå av olika anledningar
 
-          • Spara gärna en skärmdump om det händer igen
+        • Om problemet fortsätter, kontakta en administratör
+
+        • Spara gärna en skärmdump om det händer igen
+
+        '
+      title: Extra Information
     tags:
-      - stuck
-      - help
-      - fivem
+    - stuck
+    - help
+    - fivem
     uses: 0
-  'hjälp':
+  hjälp:
     cooldown: 5
     last_used: null
-    response: >-
-      Visst, vad behöver du hjälp med?
+    response: Visst, vad behöver du hjälp med?
     tags:
-      - help
-      - support
+    - help
+    - support
     uses: 0
-  'kan du hjälpa mig att logga in på databasen?':
-    cooldown: 30
-    last_used: null
-    response: >-
-      Här finns det en guide hur man gör det [Penguinhosting.host](https://penguinhosting.host/index.php?rp=/knowledgebase/1/Heidisql.html)
-    tags:
-      - learned
-    uses: 0
-  'kan inte röra mig':
+  kan inte röra mig:
     cooldown: 30
     last_used: null
     response_type: multi
     responses:
-      - title: Error details
-        content: Kan inte röra mig
-      - title: What can you do?
-        content: Read the error details and take action.
-      - title: Lösningar
-        content: >-
-          1. Tryck F8 för att öppna konsolen och skriv /tp för att teleportera dig
+    - content: Kan inte röra mig
+      title: Error details
+    - content: Read the error details and take action.
+      title: What can you do?
+    - content: '1. Tryck F8 för att öppna konsolen och skriv /tp för att teleportera
+        dig
 
-          2. Prova att logga ut och in igen på servern
+        2. Prova att logga ut och in igen på servern
 
-          3. Använd kommandot /respawn i chatten
+        3. Använd kommandot /respawn i chatten
 
-          4. Om inget annat fungerar, starta om din FiveM klient
-      - title: Extra Information
-        content: >-
-          • Detta är ett vanligt problem som kan uppstå av olika anledningar
+        4. Om inget annat fungerar, starta om din FiveM klient
 
-          • Om problemet fortsätter, kontakta en administratör
+        '
+      title: Lösningar
+    - content: '• Detta är ett vanligt problem som kan uppstå av olika anledningar
 
-          • Spara gärna en skärmdump om det händer igen
+        • Om problemet fortsätter, kontakta en administratör
+
+        • Spara gärna en skärmdump om det händer igen
+
+        '
+      title: Extra Information
     tags:
-      - stuck
-      - help
-      - fivem
+    - stuck
+    - help
+    - fivem
     uses: 0
-  'sitter fast i lufen':
+  sitter fast i lufen:
     cooldown: 30
     last_used: null
     response_type: multi
     responses:
-      - title: Error details
-        content: Sitter fast i luften
-      - title: What can you do?
-        content: Read the error details and take action.
-      - title: Lösningar
-        content: >-
-          1. Tryck F8 för att öppna konsolen och skriv /tp för att teleportera dig
+    - content: Sitter fast i luften
+      title: Error details
+    - content: Read the error details and take action.
+      title: What can you do?
+    - content: '1. Tryck F8 för att öppna konsolen och skriv /tp för att teleportera
+        dig
 
-          2. Prova att logga ut och in igen på servern
+        2. Prova att logga ut och in igen på servern
 
-          3. Använd kommandot /respawn i chatten
+        3. Använd kommandot /respawn i chatten
 
-          4. Om inget annat fungerar, starta om din FiveM klient
-      - title: Extra Information
-        content: >-
-          • Detta är ett vanligt problem som kan uppstå av olika anledningar
+        4. Om inget annat fungerar, starta om din FiveM klient
 
-          • Om problemet fortsätter, kontakta en administratör
+        '
+      title: Lösningar
+    - content: '• Detta är ett vanligt problem som kan uppstå av olika anledningar
 
-          • Spara gärna en skärmdump om det händer igen
+        • Om problemet fortsätter, kontakta en administratör
+
+        • Spara gärna en skärmdump om det händer igen
+
+        '
+      title: Extra Information
     tags:
-      - stuck
-      - help
-      - fivem
+    - stuck
+    - help
+    - fivem
     uses: 0
-  'svävar i luften':
+  svävar i luften:
     cooldown: 30
     last_used: null
     response_type: multi
     responses:
-      - title: Error details
-        content: Svävar i luften
-      - title: What can you do?
-        content: Read the error details and take action.
-      - title: Lösningar
-        content: >-
-          1. Tryck F8 för att öppna konsolen och skriv /tp för att teleportera dig
+    - content: Svävar i luften
+      title: Error details
+    - content: Read the error details and take action.
+      title: What can you do?
+    - content: '1. Tryck F8 för att öppna konsolen och skriv /tp för att teleportera
+        dig
 
-          2. Prova att logga ut och in igen på servern
+        2. Prova att logga ut och in igen på servern
 
-          3. Använd kommandot /respawn i chatten
+        3. Använd kommandot /respawn i chatten
 
-          4. Om inget annat fungerar, starta om din FiveM klient
-      - title: Extra Information
-        content: >-
-          • Detta är ett vanligt problem som kan uppstå av olika anledningar
+        4. Om inget annat fungerar, starta om din FiveM klient
 
-          • Om problemet fortsätter, kontakta en administratör
+        '
+      title: Lösningar
+    - content: '• Detta är ett vanligt problem som kan uppstå av olika anledningar
 
-          • Spara gärna en skärmdump om det händer igen
+        • Om problemet fortsätter, kontakta en administratör
+
+        • Spara gärna en skärmdump om det händer igen
+
+        '
+      title: Extra Information
     tags:
-      - stuck
-      - help
-      - fivem
+    - stuck
+    - help
+    - fivem
     uses: 0
 learning:
   enabled: true
@@ -412,14 +387,8 @@ moderation:
       low: 0.3
       medium: 0.6
   swear_words:
-  - fuck
-  - shit
-  - damn
-  - helvete
-  - fan
-  - jävla
-  - fitta
-  - kuk
+  - your_custom_word_1
+  - your_custom_word_2
 moderation_system:
   enabled: true
   settings:

@@ -122,17 +122,50 @@ cache = LearningCache()
 
 class DiscordBot(commands.Bot):
     def __init__(self):
+        # Initialize bot with intents
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.members = True
         super().__init__(command_prefix='!', intents=intents)
-        
+
+        # Initialize message tracking
+        self._message_locks = {}
+        self._pending_questions = {}
+
         # Load config
         try:
             with open('config.yaml', 'r', encoding='utf-8') as f:
-                self.config = yaml.safe_load(f)
+                self.config = yaml.safe_load(f) or {}
+            print("Config loaded successfully")
+        except FileNotFoundError:
+            print("No config file found, creating new one")
+            self.config = {}
         except Exception as e:
             print(f"Error loading config: {e}")
             self.config = {}
+        
+        # Initialize moderator after config is loaded
+        if 'moderation' not in self.config:
+            self.config['moderation'] = {
+                'enabled': True,
+                'warn_on_swear': True,
+                'timeout_duration': 5,
+                'max_warnings': 3,
+                'settings': {
+                    'auto_moderation': True,
+                    'severity_levels': {
+                        'low': 0.3,
+                        'medium': 0.6,
+                        'high': 0.8
+                    },
+                    'actions': {
+                        'low': 'warn',
+                        'medium': 'timeout',
+                        'high': 'ban'
+                    }
+                }
+            }
+            self.save_config()
         
         self.moderator = ContentModerator(self.config)
         print("Content moderator initialized")
@@ -140,15 +173,11 @@ class DiscordBot(commands.Bot):
         # Add message cache with TTL
         self.message_cache = {}
         self.cache_ttl = 5  # seconds
-        # Initialize message locks dictionary
-        self._message_locks = {}
         # Initialize cooldown tracking
         self._cooldowns = {}
         self._cooldown_duration = 60  # Default 60 seconds cooldown
         # Initialize keyword usage tracking
         self._keyword_usage = {}
-        # Initialize pending questions dictionary
-        self._pending_questions = {}
         
     def _clean_cache(self):
         """Clean old entries from message cache"""
@@ -200,64 +229,66 @@ class DiscordBot(commands.Bot):
             await welcome_channel.send(embed=embed)
 
     async def on_message(self, message):
-        if message.author == self.user:
-            return
-
-        # Check for attachments first
-        if message.attachments:
-            for attachment in message.attachments:
-                if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif']):
-                    print(f"Processing image: {attachment.filename}")
-                    await self.process_image(message, attachment)
-                    return
-
-        # Process text content
-        result = await self.moderator.moderate_message(message)
-        if result.action == "delete":
-            # Send warning embed for swear words
-            censored_content = self.censor_swear_words(message.content)
-            embed = discord.Embed(
-                title="⚠️ Olämpligt Språk",
-                description="Vänligen använd ett lämpligt språk i chatten.",
-                color=discord.Color.red()
-            )
-            embed.add_field(
-                name="Censurerat Meddelande",
-                value=f"```{censored_content}```",
-                inline=False
-            )
-            embed.set_footer(text="PenguinBot | Moderering")
-            await message.channel.send(embed=embed)
-            await message.delete()
-            return
-        elif result.action == "timeout":
-            # Add timeout logic here
-            await message.delete()
-            return
-
-        # Check if this message is already being processed
-        if message.id in self._message_locks:
-            return
-            
-        # Mark this message as being processed
-        self._message_locks[message.id] = True
-
         try:
-            # Get the message content
-            content = message.content
-            print(f"Processing message: {content}")
+            # Don't respond to our own messages
+            if message.author == self.user:
+                return
 
-            # Check message content with moderator
-            result = self.moderator.check_content(message.content, str(message.author.id))
+            # Process commands first
+            await self.process_commands(message)
+
+            # Check moderation first
+            if self.moderator and message.content:
+                try:
+                    result = self.moderator.check_content(message.content, str(message.author.id))
+                    if result.action != "allow":
+                        await message.delete()
+                        
+                        # Create moderation embed
+                        embed = discord.Embed(
+                            title="Message Removed",
+                            description=f"{message.author.mention}, your message was removed due to inappropriate content.",
+                            color=discord.Color.red()
+                        )
+                        embed.add_field(name="Reason", value=result.message, inline=False)
+                        embed.add_field(name="Action", value=result.action.title(), inline=True)
+                        if result.timeout_duration:
+                            embed.add_field(name="Timeout Duration", value=f"{result.timeout_duration} minutes", inline=True)
+                        
+                        embed.set_footer(text="Please keep the chat clean and friendly!")
+                        
+                        # Send the embed
+                        await message.channel.send(embed=embed)
+                        
+                        # Apply timeout if specified
+                        if result.timeout_duration:
+                            await message.author.timeout(
+                                duration=datetime.timedelta(minutes=result.timeout_duration),
+                                reason=result.message
+                            )
+                        return
+                except Exception as e:
+                    print(f"Error in moderation: {e}")
+
+            # Check for attachments first
+            if message.attachments:
+                try:
+                    for attachment in message.attachments:
+                        if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif']):
+                            print(f"Processing image: {attachment.filename}")
+                            await self.process_image(message, attachment)
+                            return
+                except Exception as e:
+                    print(f"Error processing attachment: {e}")
+
+            # Check if this message is already being processed
+            if message.id in self._message_locks:
+                return
             
-            # Handle moderation actions
-            if result.action == "timeout":
-                await message.author.timeout(duration=result.timeout_duration)
-                return
-            elif result.action == "delete":
-                await message.delete()
-                return
-            elif result.action == "allow":
+            # Mark this message as being processed
+            self._message_locks[message.id] = True
+
+            try:
                 # Get the message content (don't convert to lower case yet)
                 content = message.content
                 print(f"Processing message: {content}")
@@ -270,275 +301,241 @@ class DiscordBot(commands.Bot):
                         print(f"Bot message IDs: {[msg_id for msg_id in self._pending_questions.keys()]}")
                         
                         if message.reference.message_id in self._pending_questions:
-                            # Check if user has the support role
-                            support_role = discord.utils.get(message.guild.roles, id=1317550291763068938)
-                            if support_role not in message.author.roles:
-                                await message.channel.send(
-                                    embed=discord.Embed(
-                                        title="❌ Behörighet Saknas",
-                                        description="Endast support-teamet kan lära mig nya svar.",
-                                        color=discord.Color.red()
-                                    ).set_footer(text="PenguinBot | Behörighetskontroll")
-                                )
-                                return
-                                
-                            print("Found reply to pending question")
-                            bot_msg_id = message.reference.message_id
-                            question_data = self._pending_questions[bot_msg_id]
-                            
-                            # Add the new response to keywords
-                            if "keywords" not in self.config:
-                                self.config["keywords"] = {}
-                            
-                            print(f"Adding new response for question: {question_data['question']}")
-                            print(f"Response: {message.content}")
-                            
-                            self.config["keywords"][question_data['question']] = {
-                                "tags": ["learned"],
-                                "response": message.content,  # Keep original case
-                                "cooldown": 30,
-                                "uses": 0,
-                                "last_used": None
-                            }
-                            
-                            # Save the updated config
-                            try:
-                                with open('config.yaml', 'w', encoding='utf-8') as f:
-                                    yaml.dump(self.config, f, allow_unicode=True)
-                                print("Successfully saved config")
-                            except Exception as e:
-                                print(f"Error saving config: {e}")
-                            
-                            # Remove from pending questions
-                            del self._pending_questions[bot_msg_id]
-                            print(f"Removed question from pending. Remaining: {list(self._pending_questions.keys())}")
-                            
-                            # Send confirmation
-                            await message.channel.send(
-                                embed=discord.Embed(
-                                    title="✨ Nytt Svar Lärt!",
-                                    description="Tack för ditt svar! Jag har lärt mig och kommer använda denna information för att hjälpa andra.",
-                                    color=discord.Color.green()
-                                ).add_field(
-                                    name="Fråga",
-                                    value=question_data['question'],
-                                    inline=False
-                                ).add_field(
-                                    name="Svar",
-                                    value=message.content,
-                                    inline=False
-                                ).set_footer(text="PenguinBot | Lärande System")
-                            )
+                            await self.handle_pending_question_reply(message)
                             return
                         else:
                             print(f"Message is a reply but not to a pending question. Reference ID: {message.reference.message_id}")
                     except discord.NotFound:
                         print("Could not find referenced message")
                     except Exception as e:
-                        print(f"Error handling reply: {e}")
+                        print(f"Error processing reply: {e}")
 
-                # For non-reply messages, convert to lower case for matching
-                content = content.lower()
-                
-                # Then check if it's a question
-                if is_question(content):
-                    print(f"Message identified as question: {content}")
-                    # Check if this exact question or very similar exists in keywords
-                    normalized_content = content.lower().strip()
-                    found_match = False
-                    matching_keyword = None
-                    
-                    for keyword in self.config.get('keywords', {}):
-                        # Compare normalized versions of the questions
-                        if normalized_content == keyword.lower().strip():
-                            print(f"Found exact match with keyword: {keyword}")
-                            found_match = True
-                            matching_keyword = keyword
-                            break
-                            
-                        # Check if the question is very similar
-                        content_words = set(normalized_content.split())
-                        keyword_words = set(keyword.lower().strip().split())
-                        
-                        # Extract key terms (words that define the subject matter)
-                        content_key_terms = {word for word in content_words 
-                                          if word not in {'kan', 'du', 'hjälpa', 'mig', 'att', 'logga', 'in', 'på', 'i', 'och', 'eller', 'men', 'har', 'mitt', 'till'}}
-                        keyword_key_terms = {word for word in keyword_words 
-                                          if word not in {'kan', 'du', 'hjälpa', 'mig', 'att', 'logga', 'in', 'på', 'i', 'och', 'eller', 'men', 'har', 'mitt', 'till'}}
-                        
-                        # Calculate matches for both all words and key terms
-                        word_match = len(content_words & keyword_words) / len(content_words)
-                        key_term_match = len(content_key_terms & keyword_key_terms) / max(len(content_key_terms), 1)
-                        
-                        # Special handling for password reset variations
-                        if ('lösenord' in content_words or 'password' in content_words) and \
-                           ('glömt' in content_words or 'glömde' in content_words or 'tappat' in content_words):
-                            word_match = max(word_match, 0.8)
-                            key_term_match = max(key_term_match, 0.8)
-                        
-                        print(f"Word match with '{keyword}': {word_match:.2%}")
-                        print(f"Key term match with '{keyword}': {key_term_match:.2%}")
-                        
-                        # Only consider it a match if both overall words AND key terms are similar
-                        if word_match >= 0.8 and key_term_match >= 0.8:
-                            print(f"Found similar match with keyword: {keyword}")
-                            found_match = True
-                            matching_keyword = keyword
-                            break
-                    
-                    if not found_match:
-                        print("No matching keyword found, entering learning mode")
-                        # Send the learning mode message and store both IDs
-                        bot_response = await message.channel.send(
-                            embed=discord.Embed(
-                                title="Ny Fråga Upptäckt 🤔",
-                                description="Jag känner inte till svaret på denna fråga än. En medlem från support-teamet kommer att hjälpa till med ett svar snart!",
-                                color=discord.Color.blue()
-                            ).add_field(
-                                name="Information",
-                                value="Endast support-teamet kan lära mig nya svar för att säkerställa kvaliteten på informationen.",
-                                inline=False
-                            ).set_footer(text="PenguinBot | Lärande Mode")
-                        )
-                        
-                        # Store both the original question ID and the bot's response ID
-                        self._pending_questions[bot_response.id] = {
-                            "question": content,
-                            "timestamp": time.time(),
-                            "original_message_id": message.id
-                        }
-                        print(f"Added question to pending. Bot response ID: {bot_response.id}")
-                        print(f"Original question ID: {message.id}")
-                        print(f"Current pending questions: {list(self._pending_questions.keys())}")
-                        return
-                    else:
-                        print("Found matching keyword, sending embed response")
-                        keyword_data = self.config['keywords'][matching_keyword]
-                        
-                        # Create a modern looking embed
-                        embed = discord.Embed(
-                            title="🐧 Penguin Svar",
-                            description=keyword_data['response'],
-                            color=discord.Color.blue()
-                        )
-                        
-                        # Add tags if they exist
-                        if 'tags' in keyword_data and keyword_data['tags']:
-                            embed.add_field(
-                                name="Kategorier",
-                                value=" | ".join(f"#{tag}" for tag in keyword_data['tags']),
-                                inline=False
-                            )
-                        
-                        # Add footer
-                        embed.set_footer(text="PenguinBot | Ditt Hosting Support System")
-                        
-                        # Send the embed
-                        await message.channel.send(embed=embed)
-                        return
-                # Only if it's not a new question, check for keyword responses
-                print("Checking for keyword responses")
-                await self.handle_text_response(message, content)
-                
+                # Process normal message
+                await self.process_normal_message(message, content)
+
+            except Exception as e:
+                print(f"Error processing message content: {e}")
+            finally:
+                # Always clean up the message lock
+                if message.id in self._message_locks:
+                    del self._message_locks[message.id]
+
         except Exception as e:
             print(f"Error in on_message: {e}")
-            error_config = self.config['responses']['errors']['general']
-            await message.channel.send(
-                embed=discord.Embed(
-                    title=error_config['title'],
-                    description=error_config['message'],
-                    color=discord.Color.red()
-                )
-            )
-        finally:
-            # Clean up the message lock
-            if message.id in self._message_locks:
-                del self._message_locks[message.id]
+
+    async def process_normal_message(self, message, content):
+        """Process a normal (non-reply) message"""
+        try:
+            # Convert to lower case for matching
+            content_lower = content.lower()
+            
+            # Check if it's a question
+            if is_question(content_lower):
+                print(f"Message identified as question: {content_lower}")
+                await self.handle_question(message, content)
+            else:
+                # Check for keywords in the message
+                await self.handle_text_response(message, content_lower)
+        except Exception as e:
+            print(f"Error in process_normal_message: {e}")
 
     async def handle_text_response(self, message, content: str):
         """Handle general text responses"""
         try:
-            # Get response configurations
-            responses = self.config['responses']
+            # Check for keyword matches in sorted order (longest first)
+            sorted_keywords = sorted(self.config.get('keywords', {}).items(), 
+                                  key=lambda x: len(x[0]), reverse=True)
             
-            # Check for greetings
-            if any(trigger in content for trigger in responses['greetings']['triggers']):
-                response = random.choice(responses['greetings']['responses'])
-                # Format the response with username
-                response = response.format(username=message.author.name)
-                await message.channel.send(response)
-                return
-
-            # Sort keywords by length (longest first) to match most specific phrases first
-            sorted_keywords = sorted(self.config['keywords'].items(), key=lambda x: len(x[0]), reverse=True)
-            
-            # Check for keywords in the message
-            normalized_content = content.lower().strip()
             for keyword, data in sorted_keywords:
-                normalized_keyword = keyword.lower().strip()
-                
-                # Check for exact match or match as a complete phrase
-                if normalized_content == normalized_keyword or f" {normalized_keyword} " in f" {normalized_content} ":
+                if keyword.lower() in content.lower():
                     # Check cooldown
-                    if not self.check_cooldown(message.author.id, keyword):
-                        continue
+                    if 'last_used' in data:
+                        last_used = data['last_used']
+                        cooldown = data.get('cooldown', 30)  # Default 30 seconds
+                        if last_used and time.time() - last_used < cooldown:
+                            continue
+
+                    # Create embed response
+                    embed = discord.Embed(
+                        title="🐧 Penguin Svar",
+                        description=data['response'],
+                        color=discord.Color.blue()
+                    )
+                    
+                    if 'tags' in data and data['tags']:
+                        embed.add_field(
+                            name="Kategorier",
+                            value=" | ".join(f"#{tag}" for tag in data['tags']),
+                            inline=False
+                        )
+                    
+                    embed.set_footer(text="PenguinBot | Ditt Hosting Support System")
                     
                     # Update usage statistics
-                    self.update_usage(keyword)
+                    data['uses'] = data.get('uses', 0) + 1
+                    data['last_used'] = time.time()
                     
-                    # Handle multi-response type
-                    if isinstance(data, dict) and data.get('response_type') == 'multi':
-                        embed = discord.Embed(
-                            title="Information",
-                            description="Here's what I found:",
-                            color=0x3498db
-                        )
-                        
-                        # Add each response section
-                        for section in data.get('responses', []):
-                            if isinstance(section, dict):
-                                title = section.get('title', '')
-                                content = section.get('content', '')
-                                if title and content:
-                                    # Format code blocks if needed
-                                    if '```' in content:
-                                        content = content.replace('```', '')
-                                    embed.add_field(
-                                        name=title,
-                                        value=content,
-                                        inline=False
-                                    )
-                        
-                        await message.reply(embed=embed)
-                    else:
-                        # Handle single response type
-                        response = data.get('response', '') if isinstance(data, dict) else data
-                        await message.reply(response)
+                    # Save config
+                    self.save_config()
                     
-                    return
+                    # Send response
+                    await message.channel.send(embed=embed)
+                    return  # Only send one response per message
 
-            # Handle file search queries
-            if any(trigger in content for trigger in responses['file_search']['triggers']):
-                directory_links = await get_cached_directory()
-                match = find_script_path(content, directory_links)
-
-                if match:
-                    await send_embed_message(
-                        message.channel,
-                        responses['file_search']['responses']['success']['title'],
-                        responses['file_search']['responses']['success']['message'].format(path=match),
-                        "success"
-                    )
-                else:
-                    await send_embed_message(
-                        message.channel,
-                        responses['file_search']['responses']['not_found']['title'],
-                        responses['file_search']['responses']['not_found']['message'],
-                        "error"
-                    )
-
+            # If no keyword match was found and it's not a command
+            if not content.startswith('!'):
+                print(f"No keyword match found for message: {content}")
+                
         except Exception as e:
             print(f"Error in handle_text_response: {e}")
+
+    def save_config(self):
+        """Save the current configuration to file"""
+        try:
+            with open('config.yaml', 'w', encoding='utf-8') as f:
+                yaml.dump(self.config, f, allow_unicode=True)
+            print("Config saved successfully")
+        except Exception as e:
+            print(f"Error saving config: {e}")
+
+    async def handle_question(self, message, content):
+        """Handle a potential question"""
+        try:
+            # Check if this exact question or very similar exists in keywords
+            normalized_content = content.lower().strip()
+            found_match = False
+            matching_keyword = None
+            
+            for keyword in self.config.get('keywords', {}):
+                # Compare normalized versions of the questions
+                if normalized_content == keyword.lower().strip():
+                    print(f"Found exact match with keyword: {keyword}")
+                    found_match = True
+                    matching_keyword = keyword
+                    break
+                    
+                # Check if the question is very similar
+                content_words = set(normalized_content.split())
+                keyword_words = set(keyword.lower().strip().split())
+                
+                # Extract key terms (words that define the subject matter)
+                content_key_terms = {word for word in content_words 
+                                  if word not in {'kan', 'du', 'hjälpa', 'mig', 'att', 'logga', 'in', 'på', 'i', 'och', 'eller', 'men', 'har', 'mitt', 'till'}}
+                keyword_key_terms = {word for word in keyword_words 
+                                  if word not in {'kan', 'du', 'hjälpa', 'mig', 'att', 'logga', 'in', 'på', 'i', 'och', 'eller', 'men', 'har', 'mitt', 'till'}}
+                
+                # Calculate matches for both all words and key terms
+                word_match = len(content_words & keyword_words) / len(content_words)
+                key_term_match = len(content_key_terms & keyword_key_terms) / max(len(content_key_terms), 1)
+                
+                print(f"Word match with '{keyword}': {word_match:.2%}")
+                print(f"Key term match with '{keyword}': {key_term_match:.2%}")
+                
+                # Only consider it a match if both overall words AND key terms are similar
+                if word_match >= 0.8 and key_term_match >= 0.8:
+                    print(f"Found similar match with keyword: {keyword}")
+                    found_match = True
+                    matching_keyword = keyword
+                    break
+            
+            if not found_match:
+                print("No matching keyword found, entering learning mode")
+                # Send the learning mode message and store both IDs
+                bot_response = await message.channel.send(
+                    embed=discord.Embed(
+                        title="Ny Fråga Upptäckt 🤔",
+                        description="Jag känner inte till svaret på denna fråga än. En medlem från support-teamet kommer att hjälpa till med ett svar snart!",
+                        color=discord.Color.blue()
+                    ).add_field(
+                        name="Information",
+                        value="Endast support-teamet kan lära mig nya svar för att säkerställa kvaliteten på informationen.",
+                        inline=False
+                    ).set_footer(text="PenguinBot | Lärande Mode")
+                )
+                
+                # Store both the original question ID and the bot's response ID
+                self._pending_questions[bot_response.id] = {
+                    "question": content,
+                    "timestamp": time.time(),
+                    "original_message_id": message.id
+                }
+                print(f"Added question to pending. Bot response ID: {bot_response.id}")
+            else:
+                print("Found matching keyword, sending embed response")
+                keyword_data = self.config['keywords'][matching_keyword]
+                
+                # Create a modern looking embed
+                embed = discord.Embed(
+                    title="🐧 Penguin Svar",
+                    description=keyword_data['response'],
+                    color=discord.Color.blue()
+                )
+                
+                # Add tags if they exist
+                if 'tags' in keyword_data and keyword_data['tags']:
+                    embed.add_field(
+                        name="Kategorier",
+                        value=" | ".join(f"#{tag}" for tag in keyword_data['tags']),
+                        inline=False
+                    )
+                
+                # Add footer
+                embed.set_footer(text="PenguinBot | Ditt Hosting Support System")
+                
+                # Send the embed
+                await message.channel.send(embed=embed)
+        except Exception as e:
+            print(f"Error handling question: {e}")
+
+    async def handle_stuck_message(self, message):
+        """Handle 'sitter fast i lufen' messages"""
+        try:
+            # Get stuck message configurations
+            stuck_config = self.config['stuck_messages']
+            
+            # Check cooldown
+            user_id = str(message.author.id)
+            current_time = time.time()
+            
+            if hasattr(self, '_stuck_cooldowns') and user_id in self._stuck_cooldowns:
+                if current_time - self._stuck_cooldowns[user_id] < stuck_config['cooldown']:
+                    return  # Still in cooldown
+            
+            # Initialize cooldown dict if it doesn't exist
+            if not hasattr(self, '_stuck_cooldowns'):
+                self._stuck_cooldowns = {}
+            
+            # Update cooldown
+            self._stuck_cooldowns[user_id] = current_time
+            
+            # Create response embed
+            embed = discord.Embed(
+                title="🛟 Hjälp med Fastsittning",
+                description=random.choice(stuck_config['responses']['initial']),
+                color=discord.Color.blue()
+            )
+            
+            # Add solutions
+            solutions = "\n".join(f"{i+1}. {solution}" for i, solution in enumerate(stuck_config['solutions']))
+            embed.add_field(
+                name="Lösningar",
+                value=solutions,
+                inline=False
+            )
+            
+            # Add additional info
+            additional_info = "\n".join(f"• {info}" for info in stuck_config['additional_info'])
+            embed.add_field(
+                name="Extra Information",
+                value=additional_info,
+                inline=False
+            )
+            
+            # Send the response
+            await message.channel.send(embed=embed)
+            
+        except Exception as e:
+            print(f"Error handling stuck message: {e}")
             error_config = self.config['responses']['errors']['processing']
             await message.channel.send(
                 embed=discord.Embed(
@@ -548,57 +545,107 @@ class DiscordBot(commands.Bot):
                 )
             )
 
-    def clean_extracted_text(self, text: str) -> str:
-        """Clean and format extracted text to be more meaningful"""
+    async def handle_time_message(self, message):
+        """Handle time-related queries"""
         try:
-            # Split into lines
-            lines = text.split('\n')
-            cleaned_lines = []
-            
-            # Track repeated lines to avoid spam
-            last_line = None
-            repeat_count = 0
-            
-            for line in lines:
-                # Skip empty lines
-                if not line.strip():
-                    continue
-                
-                # Clean the line
-                line = line.strip()
-                
-                # Remove common OCR artifacts
-                line = re.sub(r'[^\w\s\-.,!?()[\]{}:;\'"@#$%&*+=/<>]', '', line)
-                
-                # Skip lines that are just numbers or very short
-                if line.isdigit() or len(line) < 3:
-                    continue
-                
-                # Check for repeated content
-                if line == last_line:
-                    repeat_count += 1
-                    if repeat_count > 2:  # Only show up to 3 repetitions
-                        continue
-                else:
-                    repeat_count = 0
-                
-                # Add the line if it's meaningful
-                if line:
-                    cleaned_lines.append(line)
-                    last_line = line
-            
-            # Join lines back together
-            text = '\n'.join(cleaned_lines)
-            
-            # If we have repeated lines at the end, add a note
-            if repeat_count > 2:
-                text += f"\n(och {repeat_count-2} liknande rader)"
-            
-            return text.strip()
-            
+            current_time = datetime.datetime.now().strftime("%H:%M")
+            await message.channel.send(f"Klockan är {current_time}")
         except Exception as e:
-            print(f"Error cleaning text: {e}")
-            return text
+            print(f"Error handling time message: {e}")
+
+    async def handle_pending_question_reply(self, message):
+        """Handle a reply to a pending question"""
+        try:
+            # Check if user has the support role
+            support_role = discord.utils.get(message.guild.roles, id=1229151956346605730)
+            if support_role not in message.author.roles:
+                await message.channel.send(
+                    embed=discord.Embed(
+                        title="❌ Behörighet Saknas",
+                        description="Endast support-teamet kan lära mig nya svar.",
+                        color=discord.Color.red()
+                    ).set_footer(text="PenguinBot | Behörighetskontroll")
+                )
+                return
+                
+            print("Found reply to pending question")
+            bot_msg_id = message.reference.message_id
+            question_data = self._pending_questions[bot_msg_id]
+            
+            # Add the new response to keywords
+            if "keywords" not in self.config:
+                self.config["keywords"] = {}
+            
+            print(f"Adding new response for question: {question_data['question']}")
+            print(f"Response: {message.content}")
+            
+            self.config["keywords"][question_data['question']] = {
+                "tags": ["learned"],
+                "response": message.content,  # Keep original case
+                "cooldown": 30,
+                "uses": 0,
+                "last_used": None
+            }
+            
+            # Save the updated config
+            try:
+                with open('config.yaml', 'w', encoding='utf-8') as f:
+                    yaml.dump(self.config, f, allow_unicode=True)
+                print("Successfully saved config")
+            except Exception as e:
+                print(f"Error saving config: {e}")
+            
+            # Remove from pending questions
+            del self._pending_questions[bot_msg_id]
+            print(f"Removed question from pending. Remaining: {list(self._pending_questions.keys())}")
+            
+            # Send confirmation
+            await message.channel.send(
+                embed=discord.Embed(
+                    title="✨ Nytt Svar Lärt!",
+                    description="Tack för ditt svar! Jag har lärt mig och kommer använda denna information för att hjälpa andra.",
+                    color=discord.Color.green()
+                ).add_field(
+                    name="Fråga",
+                    value=question_data['question'],
+                    inline=False
+                ).add_field(
+                    name="Svar",
+                    value=message.content,
+                    inline=False
+                ).set_footer(text="PenguinBot | Lärande System")
+            )
+        except Exception as e:
+            print(f"Error handling pending question reply: {e}")
+
+    async def handle_learning_answer(self, message, original_question):
+        """Handle answer to a learning question"""
+        try:
+            if len(message.content) > 5:  # Ensure answer is substantial
+                cache.add_learned_response(original_question, message.content)
+                del cache.learning_state[message.author.id]
+                await send_embed_message(
+                    message.channel,
+                    "Tack för svaret! 📚",
+                    f"Jag har lärt mig att svara på frågan: '{original_question}'",
+                    "success"
+                )
+        except Exception as e:
+            print(f"Error handling learning answer: {e}")
+
+    def censor_swear_words(self, text):
+        """Censor swear words in text with asterisks"""
+        # Get swear words from config
+        swear_words = self.config.get('moderation', {}).get('swear_words', [])
+        
+        censored = text
+        for word in swear_words:
+            # Create a pattern that matches the word with word boundaries
+            pattern = r'\b' + re.escape(word) + r'\b'
+            # Replace with asterisks of the same length
+            censored = re.sub(pattern, '*' * len(word), censored, flags=re.IGNORECASE)
+        
+        return censored
 
     async def process_image(self, message, attachment):
         """Process an image attachment and extract text"""
@@ -710,120 +757,84 @@ class DiscordBot(commands.Bot):
             )
             return None
 
-    async def handle_stuck_message(self, message):
-        """Handle 'sitter fast i lufen' messages"""
+    def clean_extracted_text(self, text: str) -> str:
+        """Clean and format extracted text to be more meaningful"""
         try:
-            # Get stuck message configurations
-            stuck_config = self.config['stuck_messages']
+            # Split into lines
+            lines = text.split('\n')
+            cleaned_lines = []
             
-            # Check cooldown
-            user_id = str(message.author.id)
-            current_time = time.time()
+            # Track repeated lines to avoid spam
+            last_line = None
+            repeat_count = 0
             
-            if hasattr(self, '_stuck_cooldowns') and user_id in self._stuck_cooldowns:
-                if current_time - self._stuck_cooldowns[user_id] < stuck_config['cooldown']:
-                    return  # Still in cooldown
+            for line in lines:
+                # Skip empty lines
+                if not line.strip():
+                    continue
+                
+                # Clean the line
+                line = line.strip()
+                
+                # Remove common OCR artifacts
+                line = re.sub(r'[^\w\s\-.,!?()[\]{}:;\'"@#$%&*+=/<>]', '', line)
+                
+                # Skip lines that are just numbers or very short
+                if line.isdigit() or len(line) < 3:
+                    continue
+                
+                # Check for repeated content
+                if line == last_line:
+                    repeat_count += 1
+                    if repeat_count > 2:  # Only show up to 3 repetitions
+                        continue
+                else:
+                    repeat_count = 0
+                
+                # Add the line if it's meaningful
+                if line:
+                    cleaned_lines.append(line)
+                    last_line = line
             
-            # Initialize cooldown dict if it doesn't exist
-            if not hasattr(self, '_stuck_cooldowns'):
-                self._stuck_cooldowns = {}
+            # Join lines back together
+            text = '\n'.join(cleaned_lines)
             
-            # Update cooldown
-            self._stuck_cooldowns[user_id] = current_time
+            # If we have repeated lines at the end, add a note
+            if repeat_count > 2:
+                text += f"\n(och {repeat_count-2} liknande rader)"
             
-            # Create response embed
-            embed = discord.Embed(
-                title="🛟 Hjälp med Fastsittning",
-                description=random.choice(stuck_config['responses']['initial']),
-                color=discord.Color.blue()
-            )
-            
-            # Add solutions
-            solutions = "\n".join(f"{i+1}. {solution}" for i, solution in enumerate(stuck_config['solutions']))
-            embed.add_field(
-                name="Lösningar",
-                value=solutions,
-                inline=False
-            )
-            
-            # Add additional info
-            additional_info = "\n".join(f"• {info}" for info in stuck_config['additional_info'])
-            embed.add_field(
-                name="Extra Information",
-                value=additional_info,
-                inline=False
-            )
-            
-            # Send the response
-            await message.channel.send(embed=embed)
+            return text.strip()
             
         except Exception as e:
-            print(f"Error handling stuck message: {e}")
-            error_config = self.config['responses']['errors']['processing']
-            await message.channel.send(
-                embed=discord.Embed(
-                    title=error_config['title'],
-                    description=error_config['message'],
-                    color=discord.Color.red()
-                )
-            )
+            print(f"Error cleaning text: {e}")
+            return text
 
-    async def handle_time_message(self, message):
-        """Handle time-related queries"""
-        try:
-            current_time = datetime.datetime.now().strftime("%H:%M")
-            await message.channel.send(f"Klockan är {current_time}")
-        except Exception as e:
-            print(f"Error handling time message: {e}")
-
-    async def handle_learning_answer(self, message, original_question):
-        """Handle answer to a learning question"""
-        try:
-            if len(message.content) > 5:  # Ensure answer is substantial
-                cache.add_learned_response(original_question, message.content)
-                del cache.learning_state[message.author.id]
-                await send_embed_message(
-                    message.channel,
-                    "Tack för svaret! 📚",
-                    f"Jag har lärt mig att svara på frågan: '{original_question}'",
-                    "success"
-                )
-        except Exception as e:
-            print(f"Error handling learning answer: {e}")
-
-    def censor_swear_words(self, text):
-        """Censor swear words in text with asterisks"""
-        # Get swear words from config
-        swear_words = self.config.get('moderation', {}).get('swear_words', [])
-        
-        censored = text
-        for word in swear_words:
-            # Create a pattern that matches the word with word boundaries
-            pattern = r'\b' + re.escape(word) + r'\b'
-            # Replace with asterisks of the same length
-            censored = re.sub(pattern, '*' * len(word), censored, flags=re.IGNORECASE)
-        
-        return censored
-
-def is_question(message: str) -> bool:
-    """Check if a message is likely a question"""
-    # Convert to lowercase for consistent checking
-    message = message.lower().strip()
+def is_question(text: str) -> bool:
+    """Check if the text is likely a question"""
+    # Common Swedish question words and patterns
+    question_words = {
+        'hur', 'vad', 'när', 'var', 'vem', 'vilken', 'vilket', 'vilka',
+        'varför', 'kan du', 'skulle du kunna', 'vet du', 'har du'
+    }
     
-    # Question mark is a strong indicator
-    if '?' in message:
+    # Convert to lower case and strip whitespace
+    text = text.lower().strip()
+    
+    # Check if text ends with question mark
+    if text.endswith('?'):
         return True
         
-    # Swedish question words
-    question_words = [
-        'vad', 'hur', 'när', 'var', 'vem', 'vilken', 'vilket', 'vilka',
-        'varför', 'kan du', 'skulle du', 'har du', 'vet du'
-    ]
-    
-    # Check if message starts with a question word
-    return any(message.startswith(word) for word in question_words)
+    # Check for question words at start of text
+    words = text.split()
+    if words:
+        if words[0] in question_words:
+            return True
+        # Check for two-word combinations
+        if len(words) >= 2 and ' '.join(words[:2]) in question_words:
+            return True
+            
+    return False
 
-# Function to detect errors in images using OCR
 def analyze_image_features(image):
     """Analyze image features to detect specific patterns"""
     try:
@@ -1199,4 +1210,4 @@ async def timeout(ctx, member: discord.Member, minutes: int, *, reason=None):
         await ctx.send("I don't have permission to timeout members!")
 
 bot = DiscordBot()
-bot.run("Your dicord url here")
+bot.run("Your discord token here")
